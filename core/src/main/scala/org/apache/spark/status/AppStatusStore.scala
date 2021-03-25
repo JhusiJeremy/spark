@@ -78,6 +78,10 @@ private[spark] class AppStatusStore(
     listener.map(_.activeStages()).getOrElse(Nil)
   }
 
+  def pendingStages(): Seq[v1.StageData] = {
+    listener.map(_.pendingStages()).getOrElse(Nil)
+  }
+
   def stageList(statuses: JList[v1.StageStatus]): Seq[v1.StageData] = {
     val it = store.view(classOf[StageDataWrapper]).reverse().asScala.map(_.info)
     if (statuses != null && !statuses.isEmpty()) {

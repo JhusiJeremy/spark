@@ -58,13 +58,17 @@ case class Statistics(
     sizeInBytes: BigInt,
     rowCount: Option[BigInt] = None,
     attributeStats: AttributeMap[ColumnStat] = AttributeMap(Nil),
-    hints: HintInfo = HintInfo()) {
+    hints: HintInfo = HintInfo(),
+    cost: BigInt = 0: BigInt,
+    costDetail: String = "") {
 
   override def toString: String = "Statistics(" + simpleString + ")"
 
   /** Readable string representation for the Statistics. */
   def simpleString: String = {
     Seq(s"sizeInBytes=${Utils.bytesToString(sizeInBytes)}",
+      s"cost=${cost.toString()}",
+      s"costDetail=$costDetail",
       if (rowCount.isDefined) {
         // Show row count in scientific notation.
         s"rowCount=${BigDecimal(rowCount.get, new MathContext(3, RoundingMode.HALF_UP)).toString()}"

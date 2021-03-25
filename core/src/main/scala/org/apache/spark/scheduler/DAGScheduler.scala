@@ -1009,9 +1009,24 @@ private[spark] class DAGScheduler(
     finalStage.setActiveJob(job)
     val stageIds = jobIdToStageIds(jobId).toArray
     val stageInfos = stageIds.flatMap(id => stageIdToStage.get(id).map(_.latestInfo))
+    val scanCount = getScanCount(stageInfos)
+    val groupId = job.properties.getProperty(SparkContext.SPARK_JOB_GROUP_ID, "Query Unknown")
+    logInfo("[QUERY SPEC] " + groupId + ": file scan count is " + scanCount)
     listenerBus.post(
       SparkListenerJobStart(job.jobId, jobSubmissionTime, stageInfos, properties))
     submitStage(finalStage)
+  }
+
+  private[scheduler] def getScanCount(stageInfos: Array[StageInfo]): Double = {
+    var scanCount = 0
+    stageInfos.map(stageInfo => {
+      stageInfo.rddInfos.map(rddInfo => {
+         if (rddInfo.name == "FileScanRDD") {
+           scanCount += 1
+         }
+      })
+    })
+    scanCount
   }
 
   private[scheduler] def handleMapStageSubmitted(jobId: Int,

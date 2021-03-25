@@ -775,6 +775,14 @@ private[spark] class AppStatusListener(
       .sortBy(_.stageId)
   }
 
+  def pendingStages(): Seq[v1.StageData] = {
+    liveStages.values.asScala
+      .filter(_.info.submissionTime.isEmpty)
+      .map(_.toApi())
+      .toList
+      .sortBy(_.stageId)
+  }
+
   /**
    * Apply a delta to a value, but ensure that it doesn't go negative.
    */

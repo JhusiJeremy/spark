@@ -59,8 +59,13 @@ case class FilterEstimation(plan: Filter) extends Logging {
     }
     val filteredSizeInBytes: BigInt = getOutputSize(plan.output, filteredRowCount, newColStats)
 
-    Some(childStats.copy(sizeInBytes = filteredSizeInBytes, rowCount = Some(filteredRowCount),
-      attributeStats = newColStats))
+    Some(childStats.copy(
+      sizeInBytes = filteredSizeInBytes,
+      rowCount = Some(filteredRowCount),
+      attributeStats = newColStats,
+      cost = childStats.cost + filteredSizeInBytes,
+      costDetail = s"${childStats.costDetail} " +
+        s"${plan.getClass().getSimpleName()}: $filteredSizeInBytes"))
   }
 
   /**

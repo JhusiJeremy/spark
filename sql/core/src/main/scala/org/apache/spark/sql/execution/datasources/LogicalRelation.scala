@@ -42,7 +42,11 @@ case class LogicalRelation(
   override def computeStats(): Statistics = {
     catalogTable
       .flatMap(_.stats.map(_.toPlanStats(output, conf.cboEnabled)))
-      .getOrElse(Statistics(sizeInBytes = relation.sizeInBytes))
+      .getOrElse(Statistics(
+        sizeInBytes = relation.sizeInBytes,
+        cost = relation.sizeInBytes,
+        costDetail = s"${relation.getClass().getSimpleName}: " +
+          s"${relation.sizeInBytes}"))
   }
 
   /** Used to lookup original attribute capitalization */

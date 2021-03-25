@@ -53,11 +53,14 @@ object AggregateEstimation {
       }
 
       val outputAttrStats = getOutputMap(childStats.attributeStats, agg.output)
+      val sizeInBytes = getOutputSize(agg.output, outputRows, outputAttrStats)
       Some(Statistics(
-        sizeInBytes = getOutputSize(agg.output, outputRows, outputAttrStats),
+        sizeInBytes = sizeInBytes,
         rowCount = Some(outputRows),
         attributeStats = outputAttrStats,
-        hints = childStats.hints))
+        hints = childStats.hints,
+        cost = childStats.cost + sizeInBytes,
+        costDetail = s"${childStats.costDetail} ${agg.getClass().getSimpleName}: $sizeInBytes"))
     } else {
       None
     }

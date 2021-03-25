@@ -20,7 +20,7 @@ package org.apache.spark
 import java.util.Arrays
 
 import org.apache.spark.status.AppStatusStore
-import org.apache.spark.status.api.v1.StageStatus
+import org.apache.spark.status.api.v1.{StageData, StageStatus, TaskData}
 
 /**
  * Low-level status reporting APIs for monitoring job and stage progress.
@@ -49,6 +49,49 @@ class SparkStatusTracker private[spark] (sc: SparkContext, store: AppStatusStore
   def getJobIdsForGroup(jobGroup: String): Array[Int] = {
     val expected = Option(jobGroup)
     store.jobsList(null).filter(_.jobGroup == expected).map(_.jobId).toArray
+  }
+
+  def getLastCompleteTask(): TaskData = {
+    val activeStages = store.activeStages()
+    if (activeStages.isEmpty) {
+      val completedStages = getCompletedStageInfo()
+      if (completedStages.isEmpty) {
+        return null
+      }
+      val stage = completedStages.maxBy((stage: StageData) => stage.stageId)
+      store.taskList(stage.stageId, stage.attemptId, Int.MaxValue)
+        .maxBy((task: TaskData) => task.taskId)
+    } else {
+      val stage = activeStages.minBy((stage: StageData) => stage.stageId)
+      store.taskList(stage.stageId, stage.attemptId, Int.MaxValue)
+        .maxBy((task: TaskData) => task.taskId)
+    }
+  }
+
+  def getLastCompleteTaskId(): Long = {
+    val task = getLastCompleteTask()
+    if (task == null) {
+      return 0
+    }
+    task.taskId
+  }
+
+  def getLastCompleteTaskTS(): Long = {
+    val task = getLastCompleteTask()
+    if (task == null) {
+      return 0
+    }
+    task.launchTime.getTime()
+  }
+
+  def getCompletedStageInfo(): Seq[StageData] = {
+    store.stageList(Arrays.asList(StageStatus.COMPLETE))
+}
+
+  def getTaskNumOfActiveStages(): Long = {
+    store.activeStages().map( stage => {
+      stage.numTasks - stage.numCompleteTasks
+    }).sum + store.pendingStages().map(_.numTasks).sum
   }
 
   /**

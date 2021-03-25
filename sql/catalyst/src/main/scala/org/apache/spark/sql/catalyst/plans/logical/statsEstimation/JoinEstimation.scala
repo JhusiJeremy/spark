@@ -138,10 +138,15 @@ case class JoinEstimation(join: Join) extends Logging {
       }
 
       val outputAttrStats = AttributeMap(outputStats)
+      val sizeInBytes = getOutputSize(join.output, outputRows, outputAttrStats)
       Some(Statistics(
-        sizeInBytes = getOutputSize(join.output, outputRows, outputAttrStats),
+        sizeInBytes = sizeInBytes,
         rowCount = Some(outputRows),
-        attributeStats = outputAttrStats))
+        attributeStats = outputAttrStats,
+        cost = leftStats.cost + rightStats.cost,
+        costDetail = s"${leftStats.costDetail} ${rightStats.costDetail} " +
+          s"${join.getClass().getSimpleName()}: $sizeInBytes"
+      ))
 
     case _ =>
       // When there is no equi-join condition, we do estimation like cartesian product.
@@ -149,10 +154,15 @@ case class JoinEstimation(join: Join) extends Logging {
         leftStats.attributeStats.toSeq ++ rightStats.attributeStats.toSeq)
       // Propagate the original column stats
       val outputRows = leftStats.rowCount.get * rightStats.rowCount.get
+      val sizeInBytes = getOutputSize(join.output, outputRows, inputAttrStats)
       Some(Statistics(
-        sizeInBytes = getOutputSize(join.output, outputRows, inputAttrStats),
+        sizeInBytes = sizeInBytes,
         rowCount = Some(outputRows),
-        attributeStats = inputAttrStats))
+        attributeStats = inputAttrStats,
+        cost = leftStats.cost + rightStats.cost,
+        costDetail = s"${leftStats.costDetail} ${rightStats.costDetail} " +
+          s"${join.getClass().getSimpleName()}: $sizeInBytes"
+      ))
   }
 
   // scalastyle:off
@@ -346,10 +356,13 @@ case class JoinEstimation(join: Join) extends Logging {
       val leftStats = join.left.stats
       // Propagate the original column stats for cartesian product
       val outputRows = leftStats.rowCount.get
+      val sizeInBytes = getOutputSize(join.output, outputRows, leftStats.attributeStats)
       Some(Statistics(
-        sizeInBytes = getOutputSize(join.output, outputRows, leftStats.attributeStats),
+        sizeInBytes = sizeInBytes,
         rowCount = Some(outputRows),
-        attributeStats = leftStats.attributeStats))
+        attributeStats = leftStats.attributeStats,
+        cost = leftStats.cost + sizeInBytes,
+        costDetail = s"${leftStats.costDetail} ${join.getClass().getSimpleName()}: $sizeInBytes"))
     } else {
       None
     }
