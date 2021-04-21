@@ -46,7 +46,7 @@ object SizeInBytesOnlyStatsPlanVisitor extends LogicalPlanVisitor[Statistics] {
     // Don't propagate rowCount and attributeStats, since they are not estimated here.
     Statistics(sizeInBytes = sizeInBytes, hints = p.child.stats.hints,
       cost = p.child.stats.cost + sizeInBytes,
-      costDetail = s"${p.child.stats.costDetail} ${p.getClass().getSimpleName()}: $sizeInBytes")
+      costDetail = generateTreeString(p, sizeInBytes, p.child.stats.costDetail))
   }
 
   /**
@@ -61,9 +61,14 @@ object SizeInBytesOnlyStatsPlanVisitor extends LogicalPlanVisitor[Statistics] {
       Statistics(
         sizeInBytes = sizeInBytes,
         cost = p.children.map(_.stats.sizeInBytes).sum + sizeInBytes,
-        costDetail = s"$childrenCostDetail " +
-          s"${p.getClass().getSimpleName()}: $sizeInBytes"
+        costDetail = generateTreeString(p, sizeInBytes, childrenCostDetail)
       )
+  }
+
+  def generateTreeString(p: LogicalPlan, cost: BigInt, childDetail: String): String = {
+    val thisPlan = s"${p.getClass().getSimpleName()}: $cost"
+    val childPlan = childDetail.replace("\n", "\n  ")
+    thisPlan + "\n  " + childPlan
   }
 
   override def visitAggregate(p: Aggregate): Statistics = {
@@ -107,7 +112,7 @@ object SizeInBytesOnlyStatsPlanVisitor extends LogicalPlanVisitor[Statistics] {
       rowCount = Some(rowCount),
       hints = childStats.hints,
       cost = childStats.cost + sizeInBytes,
-      costDetail = s"${childStats.costDetail} ${p.getClass().getSimpleName()}: $sizeInBytes")
+      costDetail = generateTreeString(p, sizeInBytes, childStats.costDetail))
   }
 
   override def visitHint(p: ResolvedHint): Statistics = p.child.stats.copy(hints = p.hints)
@@ -165,7 +170,7 @@ object SizeInBytesOnlyStatsPlanVisitor extends LogicalPlanVisitor[Statistics] {
         rowCount = Some(0),
         hints = childStats.hints,
         cost = childStats.cost + 1,
-        costDetail = s"${childStats.costDetail} ${p.getClass().getSimpleName()}: 1")
+        costDetail = generateTreeString(p, 1, childStats.costDetail))
     } else {
       // The output row count of LocalLimit should be the sum of row counts from each partition.
       // However, since the number of partitions is not available here, we just use statistics of
@@ -174,8 +179,7 @@ object SizeInBytesOnlyStatsPlanVisitor extends LogicalPlanVisitor[Statistics] {
       childStats.copy(
         attributeStats = AttributeMap(Nil),
         cost = childStats.cost + childStats.sizeInBytes,
-        costDetail = s"${childStats.costDetail} " +
-          s"${p.getClass().getSimpleName()}: ${childStats.sizeInBytes}")
+        costDetail = generateTreeString(p, childStats.sizeInBytes, childStats.costDetail))
     }
   }
 

@@ -19,6 +19,7 @@ package org.apache.spark.sql.catalyst.plans.logical.statsEstimation
 
 import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeMap}
 import org.apache.spark.sql.catalyst.plans.logical.{Project, Statistics}
+import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.SizeInBytesOnlyStatsPlanVisitor.generateTreeString
 
 object ProjectEstimation {
   import EstimationUtils._
@@ -39,8 +40,7 @@ object ProjectEstimation {
         sizeInBytes = sizeInBytes,
         attributeStats = outputAttrStats,
         cost = childStats.cost + sizeInBytes,
-        costDetail = s"${childStats.costDetail} " +
-          s"${project.getClass().getSimpleName()}: $sizeInBytes"))
+        costDetail = generateTreeString(project, sizeInBytes, childStats.costDetail)))
     } else {
       None
     }
